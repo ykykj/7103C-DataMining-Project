@@ -1,0 +1,10 @@
+
+## ignore virtual environments
+venv/
+
+## ignore credentials
+creds/
+
+**/__pycache__/
+
+.idea
