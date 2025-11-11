@@ -15,7 +15,7 @@ class GoogleService:
     def sendEmail(self, to, subject, body):
         creds = self._get_credentials()
         service = build('gmail', 'v1', credentials=creds)
-        message = self._create_message(sender="mohamedyousufmo@gmail.com", to=to, subject=subject, message_text=body)
+        message = self._create_message(sender="mohamednorth@gmail.com", to=to, subject=subject, message_text=body)
         self._send_message(service, "me", message)
 
 
@@ -30,7 +30,7 @@ class GoogleService:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file('../creds/credentials.json', self._SCOPES)
+                flow = InstalledAppFlow.from_client_secrets_file('creds/credentials.json', self._SCOPES)
                 creds = flow.run_local_server(port=0)
             with open('token.pickle', 'wb') as token:
                 pickle.dump(creds, token)
@@ -50,7 +50,7 @@ class GoogleService:
     def _send_message(self, service, user_id, message):
         """Sends the email via Gmail API."""
         sent = service.users().messages().send(userId=user_id, body=message).execute()
-        print(f"✅ Email sent! Message ID: {sent['id']}")
+        return "Email sent! Message ID: {sent['id']}"
 
 
 
