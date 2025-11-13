@@ -2,6 +2,7 @@ from __future__ import print_function
 import os.path
 import base64
 import pickle
+from datetime import datetime
 from email.mime.text import MIMEText
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -9,8 +10,8 @@ from google.auth.transport.requests import Request
 
 class GoogleService:
     def __init__(self):
-        # Gmail API scope for sending emails
-        self._SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+        # Gmail API scope for sending emails and events
+        self._SCOPES = ['https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/calendar.events']
 
     def sendEmail(self, to, subject, body):
         creds = self._get_credentials()
@@ -18,6 +19,36 @@ class GoogleService:
         message = self._create_message(sender="mohamednorth@gmail.com", to=to, subject=subject, message_text=body)
         self._send_message(service, "me", message)
 
+    def createBookingEvent(self, summary : str, description : str, start_time : datetime, end_time : datetime, attendees_emails=None):
+        """
+        Creates a Google Calendar event.
+
+        Parameters:
+        - summary: str -> Event title
+        - description: str -> Event details
+        - start_time: datetime -> Event start
+        - end_time: datetime -> Event end
+        - attendees_emails: list -> List of attendee emails
+        """
+        creds = self._get_credentials()
+        service = build('calendar', 'v3', credentials=creds)
+
+        event = {
+            'summary': summary,
+            'description': description,
+            'start': {
+                'dateTime': start_time.isoformat(),
+                'timeZone': 'America/New_York',  # Change as needed
+            },
+            'end': {
+                'dateTime': end_time.isoformat(),
+                'timeZone': 'America/New_York',
+            },
+            'attendees': [{'email': email} for email in attendees_emails] if attendees_emails else [],
+        }
+
+        created_event = service.events().insert(calendarId='primary', body=event).execute()
+        return f"Event created: {created_event.get('htmlLink')}"
 
     def _get_credentials(self):
         """Handles authentication and saves a token for reuse."""
