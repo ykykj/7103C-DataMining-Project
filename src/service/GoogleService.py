@@ -11,13 +11,57 @@ from google.auth.transport.requests import Request
 class GoogleService:
     def __init__(self):
         # Gmail API scope for sending emails and events
-        self._SCOPES = ['https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/calendar.events']
+        self._SCOPES = ['https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar.events']
 
     def sendEmail(self, to, subject, body):
         creds = self._get_credentials()
         service = build('gmail', 'v1', credentials=creds)
-        message = self._create_message(sender="mohamednorth@gmail.com", to=to, subject=subject, message_text=body)
+        message = self._create_message(sender="yousufrahman7991@gmail.com", to=to, subject=subject, message_text=body)
         self._send_message(service, "me", message)
+
+    def searchEmail(self, query):
+        creds = self._get_credentials()
+        service = build('gmail', 'v1', credentials=creds)
+
+        results = service.users().messages().list(userId='me', q=query).execute()
+        messages = results.get('messages', [])
+
+        if not messages:
+            print("No messages found.")
+            return []
+
+        emails = []
+
+        for msg in messages:
+            msg_id = msg['id']
+            msg_data = service.users().messages().get(userId='me', id=msg_id, format='full').execute()
+            headers = msg_data['payload']['headers']
+
+            subject = next((h['value'] for h in headers if h['name'] == 'Subject'), '')
+            sender = next((h['value'] for h in headers if h['name'] == 'From'), '')
+
+            # Decode body
+            body = ""
+            if 'parts' in msg_data['payload']:
+                for part in msg_data['payload']['parts']:
+                    if part['mimeType'] == 'text/plain':
+                        body = base64.urlsafe_b64decode(part['body'].get('data', '')).decode('utf-8')
+            else:
+                body = base64.urlsafe_b64decode(msg_data['payload']['body'].get('data', '')).decode('utf-8')
+
+            # Get email date
+            internal_timestamp = int(msg_data['internalDate'])  # milliseconds since epoch
+            email_date = datetime.fromtimestamp(internal_timestamp / 1000)  # convert to datetime
+
+            emails.append({
+                'id': msg_id,
+                'subject': subject,
+                'sender': sender,
+                'body': body,
+                'date': email_date.strftime('%Y-%m-%d %H:%M:%S')  # readable format
+            })
+
+        return emails
 
     def createBookingEvent(self, summary : str, description : str, start_time : datetime, end_time : datetime, attendees_emails=None):
         """

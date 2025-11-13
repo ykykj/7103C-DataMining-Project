@@ -55,3 +55,14 @@ def createBookingEvent(summary : str, description : str, start_time : datetime, 
             attendees_emails_list : List of attendee emails
     """
     return googleService.createBookingEvent(summary, description, start_time, end_time, attendees_emails_list)
+
+@tool
+def searchEmail(query : str):
+    """
+        Search emails using gmail api.
+        Parameters:
+            query : valid email search query that can be used in google api
+        :return
+            messages
+    """
+    return googleService.searchEmail(query)
