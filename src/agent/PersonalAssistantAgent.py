@@ -1,6 +1,6 @@
 from langchain.agents import create_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
-from src.tools.AgentTools import sendEmail, createBookingEvent, searchEmail
+from src.tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument
 from langgraph.checkpoint.memory import InMemorySaver
 
 class PersonalAssistantAgent:
@@ -8,9 +8,10 @@ class PersonalAssistantAgent:
     def __init__(self):
         ## setting up model
         self._model = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+
         ## creating an agent
         self._agent = create_agent(model=self._model,
-                                    tools=[sendEmail, createBookingEvent, searchEmail],
+                                    tools=[sendEmail, createBookingEvent, searchEmail, createDriveDocument],
                                     system_prompt=self._getSystemPrompt(),  checkpointer=InMemorySaver())
 
     def callAgent(self, query):
@@ -48,7 +49,37 @@ class PersonalAssistantAgent:
         - If they only mention subject/body/sender, search accordingly.
         - Summarize results without including full email bodies.
         - If the user requests email statistics (e.g., count, frequency), calculate and report them.
-
+        
+        If the user asks for any kind of STUDY PLAN, INTERVIEW PLAN, LEARNING ROADMAP, or PREPARATION GUIDE:
+            1. Generate the plan in CLEAN PLAIN TEXT (no Markdown).
+               - Use uppercase section titles (e.g., WEEK 1, DAY 1).
+               - Use numbered lists (1., 2., 3.)
+               - Use simple dash bullets (- item)
+               - Do not use *, #, **, code blocks, or Markdown formats.
+            
+            2. Store the generated plan in Google Drive
+               - Use the `createDriveDocument` tool.
+               - The document content must be the FULL generated plan (NOT the summary).
+               - Title format:
+                   "<Topic> Study Plan – <Date time>"
+            
+            3. After successfully creating the document:
+               - Summarize the plan in **5–8 concise bullet points.
+               - Provide the Google Drive document link returned by `createDriveDocument`.
+            
+            4. Always respond in the following structure:
+               A) A short confirmation sentence  
+               B) A bullet-point summary  
+               C) The Drive document link  
+            
+            5. Do NOT include the full plan in the chat response.
+               Only the summary + link should appear in the final answer.
+            
+            Example Response Format:
+            
+            "Your study plan is ready!  
+            Here's a quick summary:
+    
         Always:
         - Ask the user for missing information.
         - Do not worry about the sender’s email — the tools handle authentication automatically.

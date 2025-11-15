@@ -66,3 +66,14 @@ def searchEmail(query : str):
             messages
     """
     return googleService.searchEmail(query)
+
+@tool
+def createDriveDocument(documentName : str, documentContent : str):
+    """
+    Creates a Google Drive document.
+    Parameters:
+    :param documentName:
+    :param documentContent:
+    :return: document link
+    """
+    return googleService.createDocumentInDrive(documentName, documentContent)
