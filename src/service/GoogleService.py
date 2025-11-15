@@ -10,8 +10,12 @@ from google.auth.transport.requests import Request
 
 class GoogleService:
     def __init__(self):
-        # Gmail API scope for sending emails and events
-        self._SCOPES = ['https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar.events']
+        # Gmail API scope for sending emails, events, calendar, drive
+        self._SCOPES = ['https://www.googleapis.com/auth/gmail.send',
+                        'https://www.googleapis.com/auth/gmail.readonly',
+                        'https://www.googleapis.com/auth/calendar.events',
+                        'https://www.googleapis.com/auth/drive.file',
+                        'https://www.googleapis.com/auth/documents']
 
     def sendEmail(self, to, subject, body):
         creds = self._get_credentials()
@@ -93,6 +97,35 @@ class GoogleService:
 
         created_event = service.events().insert(calendarId='primary', body=event).execute()
         return f"Event created: {created_event.get('htmlLink')}"
+
+    def createDocumentInDrive(self, title="New Document", content="Hello, this is a test document created by Python!"):
+        """
+        Creates a Google Docs document in Drive and adds initial text.
+
+        Parameters:
+        - title: str -> Document title
+        - content: str -> Initial content to insert
+        """
+        creds = self._get_credentials()
+        docs_service = build('docs', 'v1', credentials=creds)
+
+        # Step 1: Create the document
+        doc = docs_service.documents().create(body={'title': title}).execute()
+        doc_id = doc['documentId']
+
+        # Step 2: Insert initial content
+        requests = [
+            {
+                'insertText': {
+                    'location': {'index': 1},
+                    'text': content
+                }
+            }
+        ]
+        docs_service.documents().batchUpdate(documentId=doc_id, body={'requests': requests}).execute()
+
+        # Optional: return the Google Docs URL
+        return f"Document created: https://docs.google.com/document/d/{doc_id}/edit"
 
     def _get_credentials(self):
         """Handles authentication and saves a token for reuse."""
