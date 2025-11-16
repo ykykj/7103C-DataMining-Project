@@ -37,7 +37,7 @@ def sendEmail(to_list: str, subject: str, message_text: str):
         to = to_list[0]
     else:
         to = to_list.join(" ,")
-
+    print("Sending email...")
     googleService.sendEmail(to, subject, message_text)
     return "Sent an email to {}".format(to)
 
@@ -54,6 +54,7 @@ def createBookingEvent(summary : str, description : str, start_time : datetime, 
             end_time : End time of the event
             attendees_emails_list : List of attendee emails
     """
+    print("About to create booking event")
     return googleService.createBookingEvent(summary, description, start_time, end_time, attendees_emails_list)
 
 @tool
@@ -65,6 +66,7 @@ def searchEmail(query : str):
         :return
             messages
     """
+    print("Searching emails...")
     return googleService.searchEmail(query)
 
 @tool
@@ -76,4 +78,5 @@ def createDriveDocument(documentName : str, documentContent : str):
     :param documentContent:
     :return: document link
     """
+    print("About to create drive document")
     return googleService.createDocumentInDrive(documentName, documentContent)
