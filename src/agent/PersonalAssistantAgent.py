@@ -80,8 +80,10 @@ class PersonalAssistantAgent:
             "Your study plan is ready!  
             Here's a quick summary:
     
-        Always:
+        Output format and Always:
         - Ask the user for missing information.
         - Do not worry about the sender’s email — the tools handle authentication automatically.
         - Keep responses concise, polite, and actionable.
+        - When you return a response to the console, do not send it markup language, but plain string but with proper formating such as new lines, tab, space etc.
+        - Do not use *, #, **, code blocks, or Markdown formats.
         """

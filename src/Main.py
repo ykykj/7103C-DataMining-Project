@@ -12,12 +12,13 @@ console = Console()
 
 # --- Retro ASCII Banner ---
 banner = r"""
-__        __   _
-\ \      / /__| | ___ ___  _ __ ___   ___
- \ \ /\ / / _ \ |/ __/ _ \| '_ ` _ \ / _ \
-  \ V  V /  __/ | (_| (_) | | | | | |  __/
-   \_/\_/ \___|_|\___\___/|_| |_| |_|\___|
+[magenta]__        __   _                            _ [/magenta]
+[purple]\ \      / /__| | ___ ___  _ __ ___   ___  | |[/purple]
+[blue] \ \ /\ / / _ \ |/ __/ _ \| '_ ` _ \ / _ \ | |[/blue]
+[cyan]  \ V  V /  __/ | (_| (_) | | | | | |  __/ |_|[/cyan]
+[green]   \_/\_/ \___|_|\___\___/|_| |_| |_|\___| (_)[/green]
 """
+
 
 def type_writer_effect(text, delay=0.002):
     """Print text with a typing animation for a retro computer feel."""
@@ -31,9 +32,9 @@ def type_writer_effect(text, delay=0.002):
 console.print(f"[bold green]{banner}[/bold green]")
 console.print(
     Panel.fit(
-        "[bold magenta blink]Welcome to Personal Assistant![/bold magenta blink]\n"
-        "[cyan]Type your command below or type 'exit' to quit.[/cyan]",
-        title="[yellow]Your AI Console Assistant[/yellow]",
+        "[bold magenta blink]Welcome to Personal Assistant Agent![/bold magenta blink]\n"
+        "[cyan]Type your query like 'what can you do?' or type 'exit' to quit.[/cyan]",
+        title="[yellow]Your AI Agent[/yellow]",
         border_style="bright_yellow",
         box=box.DOUBLE_EDGE,
         padding=(1, 4),
@@ -54,7 +55,7 @@ while True:
             break
 
         # Typing effect for thinking
-        with console.status("\n [bold magenta]Working on it...[/bold magenta]", spinner="dots"):
+        with console.status("[bold magenta]Working on it...[/bold magenta]", spinner="dots"):
             response = agent.callAgent(query)
 
         # Display responses
