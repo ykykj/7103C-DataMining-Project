@@ -2,12 +2,19 @@ from langchain.agents import create_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
 from src.tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument
 from langgraph.checkpoint.memory import InMemorySaver
+from langchain_core.rate_limiters import InMemoryRateLimiter
 
 class PersonalAssistantAgent:
 
     def __init__(self):
         ## setting up model
         self._model = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+
+        self._rate_limiter = InMemoryRateLimiter(
+            requests_per_second=0.2,  # <-- Super slow! We can only make a request once every 10 seconds!!
+            check_every_n_seconds=0.1,  # Wake up every 100 ms to check whether allowed to make a request,
+            max_bucket_size=10,  # Controls the maximum burst size.
+        )
 
         ## creating an agent
         self._agent = create_agent(model=self._model,
@@ -17,7 +24,12 @@ class PersonalAssistantAgent:
     def callAgent(self, query):
         return self._agent.invoke(
             {"messages": [{"role": "user", "content": query}]},
-            {"configurable": {"thread_id": "1"}},
+            {
+                "configurable": {
+                    "thread_id": "1",
+                    "rate_limiter": self._rate_limiter
+                }
+             },
         )
 
     def _getSystemPrompt(self):
