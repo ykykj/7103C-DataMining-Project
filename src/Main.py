@@ -79,3 +79,6 @@ while True:
     except KeyboardInterrupt:
         console.print("\n[bold yellow]⚙️ Exiting...[/bold yellow]")
         break
+    except Exception as e:
+        print(e)
+        console.print("Can you retry some error occurred?[/bold yellow]")
