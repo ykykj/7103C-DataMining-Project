@@ -46,14 +46,14 @@ This assistant can generate study or interview preparation plans, interact with 
 
 ## 🛠 **Tech Stack**
 
-| Component                 | Description    |
-| ------------------------- | -------------- |
-| **Python 3.10+**          | Main runtime   |
-| **LangChain**             | Agent + Tools  |
-| **Google Gemini 2.5 Pro** | LLM model      |
-| **Google Workspace APIs** | Gmail + Drive  |
-| **OAuth 2.0**             | Authentication |
-| **Rich**                  | CLI styling    |
+| Component                 | Description              |
+| ------------------------- |--------------------------|
+| **Python 3.10+**          | Main runtime             |
+| **LangChain**             | Agent + Tools            |
+| **Google Gemini 2.5 Pro** | LLM model                |
+| **Google Workspace APIs** | Gmail + Drive + Calender |
+| **OAuth 2.0**             | Authentication           |
+| **Rich**                  | CLI styling              |
 
 ---
 
