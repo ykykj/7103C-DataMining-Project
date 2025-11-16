@@ -87,11 +87,11 @@ class GoogleService:
             'description': description,
             'start': {
                 'dateTime': start_time.isoformat(),
-                'timeZone': 'America/New_York',  # Change as needed
+                'timeZone': 'America/Los_Angeles',  # Change as needed
             },
             'end': {
                 'dateTime': end_time.isoformat(),
-                'timeZone': 'America/New_York',
+                'timeZone': 'America/Los_Angeles',
             },
             'attendees': [{'email': email} for email in attendees_emails] if attendees_emails else [],
         }

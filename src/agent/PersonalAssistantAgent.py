@@ -28,7 +28,7 @@ class PersonalAssistantAgent:
         If the user wants to send an email:
         - Use the `sendEmail` tool.
         - Collect all necessary details (recipient(s), subject, and body).
-        - Write the email in a clear, professional tone.
+        - Write the email in a clear, professional tone. Including proper opening state like Hi there , and closing statements like thank you.
         - If the subject is missing, create one based on the context.
         - After sending, summarize the action without including the full email body.
 
