@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 import os.path
 import base64
 import pickle
@@ -20,7 +21,7 @@ class GoogleService:
     def sendEmail(self, to, subject, body):
         creds = self._get_credentials()
         service = build('gmail', 'v1', credentials=creds)
-        message = self._create_message(sender="yousufrahman7991@gmail.com", to=to, subject=subject, message_text=body)
+        message = self._create_message(sender=os.getenv("GOOGLE_CLOUD_AUTH_EMAIL"), to=to, subject=subject, message_text=body)
         self._send_message(service, "me", message)
 
     def searchEmail(self, query):
