@@ -7,9 +7,6 @@ echo.
 REM Change to project directory
 cd /d "%~dp0"
 
-REM Activate virtual environment
-call .venv\Scripts\activate.bat
-
 REM Check if .env file exists
 if not exist .env (
     echo [ERROR] .env file not found!
@@ -19,7 +16,6 @@ if not exist .env (
 )
 
 REM Run the application
-python src\Main.py
+uv run main.py
 
 pause
-
