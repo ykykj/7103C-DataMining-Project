@@ -1,5 +1,4 @@
 from __future__ import print_function
-import os
 import os.path
 import base64
 import pickle
@@ -9,19 +8,18 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
+from config import settings
+
+
 class GoogleService:
     def __init__(self):
         # Gmail API scope for sending emails, events, calendar, drive
-        self._SCOPES = ['https://www.googleapis.com/auth/gmail.send',
-                        'https://www.googleapis.com/auth/gmail.readonly',
-                        'https://www.googleapis.com/auth/calendar.events',
-                        'https://www.googleapis.com/auth/drive.file',
-                        'https://www.googleapis.com/auth/documents']
+        self._SCOPES = settings.get_google_scopes()
 
     def sendEmail(self, to, subject, body):
         creds = self._get_credentials()
         service = build('gmail', 'v1', credentials=creds)
-        message = self._create_message(sender=os.getenv("GOOGLE_CLOUD_AUTH_EMAIL"), to=to, subject=subject, message_text=body)
+        message = self._create_message(sender=settings.google_cloud_auth_email, to=to, subject=subject, message_text=body)
         self._send_message(service, "me", message)
 
     def searchEmail(self, query):
@@ -87,11 +85,11 @@ class GoogleService:
             'description': description,
             'start': {
                 'dateTime': start_time.isoformat(),
-                'timeZone': 'America/Los_Angeles',  # Change as needed
+                'timeZone': settings.google_calendar_timezone,
             },
             'end': {
                 'dateTime': end_time.isoformat(),
-                'timeZone': 'America/Los_Angeles',
+                'timeZone': settings.google_calendar_timezone,
             },
             'attendees': [{'email': email} for email in attendees_emails] if attendees_emails else [],
         }
@@ -131,17 +129,20 @@ class GoogleService:
     def _get_credentials(self):
         """Handles authentication and saves a token for reuse."""
         creds = None
-        if os.path.exists('token.pickle'):
-            with open('token.pickle', 'rb') as token:
+        token_path = settings.google_token_path
+        credentials_path = settings.google_credentials_path
+        
+        if token_path.exists():
+            with open(token_path, 'rb') as token:
                 creds = pickle.load(token)
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file('creds/credentials.json', self._SCOPES)
+                flow = InstalledAppFlow.from_client_secrets_file(str(credentials_path), self._SCOPES)
                 creds = flow.run_local_server(port=0)
-            with open('token.pickle', 'wb') as token:
+            with open(token_path, 'wb') as token:
                 pickle.dump(creds, token)
         return creds
 
