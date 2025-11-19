@@ -1,6 +1,9 @@
 
 ## ignore virtual environments
 venv/
+.venv/
+env/
+ENV/
 
 ## ignore credentials
 creds/
