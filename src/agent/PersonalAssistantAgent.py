@@ -3,27 +3,25 @@ from langchain_openai import ChatOpenAI
 from tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.rate_limiters import InMemoryRateLimiter
-from dotenv import load_dotenv
-import os
 
-# Load environment variables
-load_dotenv()
+from config import settings
+
 
 class PersonalAssistantAgent:
 
     def __init__(self):
         ## setting up model with DeepSeek API
         self._model = ChatOpenAI(
-            model="deepseek-chat",
-            openai_api_key=os.getenv("DEEPSEEK_API_KEY"),
-            openai_api_base="https://api.deepseek.com",
-            temperature=0.7
+            model=settings.deepseek_model,
+            openai_api_key=settings.deepseek_api_key,
+            openai_api_base=settings.deepseek_api_base,
+            temperature=settings.deepseek_temperature
         )
 
         self._rate_limiter = InMemoryRateLimiter(
-            requests_per_second=0.2,  # <-- Super slow! We can only make a request once every 10 seconds!!
-            check_every_n_seconds=0.1,  # Wake up every 100 ms to check whether allowed to make a request,
-            max_bucket_size=10,  # Controls the maximum burst size.
+            requests_per_second=settings.rate_limit_requests_per_second,
+            check_every_n_seconds=settings.rate_limit_check_interval,
+            max_bucket_size=settings.rate_limit_max_burst,
         )
 
         ## creating an agent
