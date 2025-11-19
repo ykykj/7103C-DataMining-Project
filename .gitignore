@@ -7,6 +7,8 @@ ENV/
 
 ## ignore credentials
 creds/
+.env
+token.pickle
 
 **/__pycache__/
 

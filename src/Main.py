@@ -1,11 +1,18 @@
+import sys
+import os
+from pathlib import Path
+
+# Add the src directory to Python path
+src_dir = Path(__file__).parent
+sys.path.insert(0, str(src_dir))
+
 from langchain_core.messages import ToolMessage, AIMessage, HumanMessage
-from src.agent.PersonalAssistantAgent import PersonalAssistantAgent
+from agent.PersonalAssistantAgent import PersonalAssistantAgent
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 from rich import box
 import time
-import sys
 
 # Initialize Rich console
 console = Console()
@@ -81,4 +88,4 @@ while True:
         break
     except Exception as e:
         print(e)
-        console.print("Can you retry some error occurred?[/bold yellow]")
+        console.print("[bold yellow]⚠️ An error occurred. Please check your API key and balance, then retry.[/bold yellow]")

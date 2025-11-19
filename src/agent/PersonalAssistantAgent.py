@@ -1,14 +1,24 @@
 from langchain.agents import create_agent
-from langchain_google_genai import ChatGoogleGenerativeAI
-from src.tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument
+from langchain_openai import ChatOpenAI
+from tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.rate_limiters import InMemoryRateLimiter
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
 
 class PersonalAssistantAgent:
 
     def __init__(self):
-        ## setting up model
-        self._model = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+        ## setting up model with DeepSeek API
+        self._model = ChatOpenAI(
+            model="deepseek-chat",
+            openai_api_key=os.getenv("DEEPSEEK_API_KEY"),
+            openai_api_base="https://api.deepseek.com",
+            temperature=0.7
+        )
 
         self._rate_limiter = InMemoryRateLimiter(
             requests_per_second=0.2,  # <-- Super slow! We can only make a request once every 10 seconds!!

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from langchain.tools import tool
-from src.service.GoogleService import GoogleService
+from service.GoogleService import GoogleService
 
 
 
