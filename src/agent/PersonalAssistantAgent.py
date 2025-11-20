@@ -1,10 +1,10 @@
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument
+from src.tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.rate_limiters import InMemoryRateLimiter
 
-from config import settings
+from src.config import settings
 
 
 class PersonalAssistantAgent:
