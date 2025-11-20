@@ -44,9 +44,13 @@ class Settings(BaseSettings):
         ...,
         description="Google Cloud authenticated email address"
     )
-    google_credentials_path: Path = Field(
-        default=Path("creds/credentials.json"),
-        description="Path to Google OAuth credentials file"
+    google_oauth_client_id: str = Field(
+        ...,
+        description="Google OAuth 2.0 Client ID"
+    )
+    google_oauth_client_secret: str = Field(
+        ...,
+        description="Google OAuth 2.0 Client Secret"
     )
     google_token_path: Path = Field(
         default=Path("token.pickle"),
@@ -74,7 +78,7 @@ class Settings(BaseSettings):
         description="Maximum burst size for rate limiting"
     )
     
-    @field_validator("google_credentials_path", "google_token_path")
+    @field_validator("google_token_path")
     @classmethod
     def validate_path(cls, v: Path) -> Path:
         """Ensure paths are Path objects."""
