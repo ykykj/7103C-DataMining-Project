@@ -204,11 +204,13 @@ def getDirections(
         Destination location (address or place name)
     mode : str, optional
         Travel mode: "DRIVE", "WALK", "BICYCLE", or "TRANSIT" (default: "DRIVE")
+        TRANSIT includes bus, MTR, train, and other public transportation
     language : str, optional
         Language for results (default: "zh-CN")
     route_preference : str, optional
         Route preference: "TRAFFIC_AWARE" (fastest with traffic), "TRAFFIC_AWARE_OPTIMAL" (balanced),
         "TRAFFIC_UNAWARE" (ignore traffic), "FUEL_EFFICIENT" (save fuel) (default: "TRAFFIC_AWARE")
+        Note: Only applies to DRIVE, WALK, BICYCLE modes
     
     Returns:
     -------
@@ -217,10 +219,10 @@ def getDirections(
     
     Notes:
     -----
-    - Uses Google Routes API v2 for better accuracy and real-time traffic
-    - Supports multiple travel modes and route preferences
-    - Provides detailed turn-by-turn directions with traffic-aware ETAs
-    - Includes toll information and route quality indicators
+    - Uses Google Routes API v2 for all travel modes with real-time data
+    - For TRANSIT: includes specific bus/train lines, stops, departure/arrival times
+    - For DRIVE/WALK/BICYCLE: includes turn-by-turn navigation with traffic-aware ETAs
+    - Includes toll information, warnings, and route quality indicators
     """
     import requests
     import re
@@ -255,11 +257,14 @@ def getDirections(
                 "address": destination
             },
             "travelMode": mode,
-            "routingPreference": route_preference,
             "languageCode": language,
             "units": "METRIC",
             "computeAlternativeRoutes": False
         }
+        
+        # Only add routing preference for non-TRANSIT modes
+        if mode != "TRANSIT":
+            payload["routingPreference"] = route_preference
         
         response = requests.post(url, json=payload, headers=headers)
         response.raise_for_status()
@@ -308,28 +313,68 @@ def getDirections(
         steps = leg.get('steps', [])
         
         for idx, step in enumerate(steps, 1):
-            # Get navigation instruction
-            instruction = step.get('navigationInstruction', {}).get('instructions', '')
+            travel_mode = step.get('travelMode', 'WALK')
             
-            if not instruction:
-                # Fallback to maneuver type
-                maneuver = step.get('navigationInstruction', {}).get('maneuver', 'STRAIGHT')
-                instruction = maneuver.replace('_', ' ').title()
-            
-            # Clean HTML tags if present
-            instruction = re.sub(r'<[^>]+>', '', instruction)
-            
-            # Distance and duration for this step
-            step_distance = step.get('distanceMeters', 0)
-            step_duration = step.get('staticDuration', '')
-            
-            output.append(f"{idx}. {instruction}")
-            
-            if step_distance > 0:
-                if step_distance >= 1000:
-                    output.append(f"   Distance: {step_distance/1000:.1f} km")
-                else:
-                    output.append(f"   Distance: {step_distance:.0f} m")
+            # Handle TRANSIT steps (bus, train, subway, etc.)
+            if travel_mode == 'TRANSIT':
+                transit_details = step.get('transitDetails', {})
+                stop_details = transit_details.get('stopDetails', {})
+                transit_line = transit_details.get('transitLine', {})
+                
+                # Get transit line information
+                line_name = transit_line.get('name', 'Unknown Line')
+                vehicle = transit_line.get('vehicle', {})
+                vehicle_type = vehicle.get('name', {}).get('text', 'Transit')
+                
+                # Get stop information
+                departure_stop = stop_details.get('departureStop', {}).get('name', 'Unknown')
+                arrival_stop = stop_details.get('arrivalStop', {}).get('name', 'Unknown')
+                stop_count = transit_details.get('stopCount', 0)
+                
+                # Get time information
+                departure_time = stop_details.get('localizedValues', {}).get('departureTime', {}).get('time', {}).get('text', '')
+                arrival_time = stop_details.get('localizedValues', {}).get('arrivalTime', {}).get('time', {}).get('text', '')
+                
+                # Get duration
+                duration_text = step.get('localizedValues', {}).get('staticDuration', {}).get('text', '')
+                distance_text = step.get('localizedValues', {}).get('distance', {}).get('text', '')
+                
+                output.append(f"\n{idx}. Take {vehicle_type}: {line_name}")
+                output.append(f"   Board at: {departure_stop}")
+                if departure_time:
+                    output.append(f"   Departure: {departure_time}")
+                output.append(f"   Get off at: {arrival_stop}")
+                if arrival_time:
+                    output.append(f"   Arrival: {arrival_time}")
+                output.append(f"   Stops: {stop_count}")
+                output.append(f"   Duration: {duration_text}")
+                if distance_text:
+                    output.append(f"   Distance: {distance_text}")
+                
+            else:
+                # Handle WALK, DRIVE, BICYCLE steps
+                instruction = step.get('navigationInstruction', {}).get('instructions', '')
+                
+                if not instruction:
+                    # Fallback to maneuver type
+                    maneuver = step.get('navigationInstruction', {}).get('maneuver', '')
+                    if maneuver:
+                        instruction = maneuver.replace('_', ' ').title()
+                    else:
+                        instruction = f"{travel_mode.title()}"
+                
+                # Clean HTML tags if present
+                instruction = re.sub(r'<[^>]+>', '', instruction)
+                
+                # Get localized values
+                distance_text = step.get('localizedValues', {}).get('distance', {}).get('text', '')
+                duration_text = step.get('localizedValues', {}).get('staticDuration', {}).get('text', '')
+                
+                output.append(f"\n{idx}. {instruction}")
+                if distance_text:
+                    output.append(f"   Distance: {distance_text}")
+                if duration_text:
+                    output.append(f"   Duration: {duration_text}")
         
         return "\n".join(output)
     
