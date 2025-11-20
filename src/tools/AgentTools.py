@@ -20,6 +20,15 @@ def _get_tavily_client():
 
 googleService = GoogleService()
 
+# Import Google Maps tools (Direct API)
+try:
+    from src.tools.GoogleMapTools import get_google_maps_tools
+    GOOGLE_MAPS_AVAILABLE = True
+except ImportError:
+    GOOGLE_MAPS_AVAILABLE = False
+    get_google_maps_tools = lambda: []
+    print("Warning: Google Maps tools not available")
+
 @tool
 def sendEmail(to_list: str, subject: str, message_text: str):
     """
@@ -69,6 +78,67 @@ def createBookingEvent(summary : str, description : str, start_time : datetime, 
     """
     print("About to create booking event")
     return googleService.createBookingEvent(summary, description, start_time, end_time, attendees_emails_list)
+
+@tool
+def readCalendarEvents(start_time: datetime, end_time: datetime, max_results: int = 10) -> str:
+    """
+    Read calendar events within a specified time range.
+    
+    Parameters:
+    ----------
+    start_time : datetime
+        Start of the time range to query events
+    end_time : datetime
+        End of the time range to query events
+    max_results : int, optional
+        Maximum number of events to return (default: 10)
+    
+    Returns:
+    -------
+    str
+        Formatted list of calendar events with details including:
+        - Event title (summary)
+        - Start and end time
+        - Description
+        - Location
+        - Attendees
+        - Event link
+    
+    Notes:
+    -----
+    - Use this tool to check upcoming events, view schedule, or find specific meetings
+    - Events are returned in chronological order
+    - Use getCurrentTime() first to get the current date/time for relative queries
+    - For "today's events", set start_time to today 00:00 and end_time to today 23:59
+    - For "this week's events", calculate the week range accordingly
+    """
+    print("Reading calendar events...")
+    events = googleService.getCalendarEvents(start_time, end_time, max_results)
+    
+    if not events:
+        return f"No events found between {start_time.strftime('%Y-%m-%d %H:%M')} and {end_time.strftime('%Y-%m-%d %H:%M')}"
+    
+    # Format events for display
+    formatted_output = []
+    formatted_output.append(f"Found {len(events)} event(s):\n")
+    
+    for idx, event in enumerate(events, 1):
+        formatted_output.append(f"{idx}. {event['summary']}")
+        formatted_output.append(f"   Time: {event['start']} to {event['end']}")
+        
+        if event['description']:
+            formatted_output.append(f"   Description: {event['description']}")
+        
+        if event['location']:
+            formatted_output.append(f"   Location: {event['location']}")
+        
+        if event['attendees']:
+            formatted_output.append(f"   Attendees: {', '.join(event['attendees'])}")
+        
+        formatted_output.append(f"   Link: {event['htmlLink']}")
+        formatted_output.append("")  # Empty line between events
+    
+    return "\n".join(formatted_output)
 
 @tool
 def searchEmail(query : str):

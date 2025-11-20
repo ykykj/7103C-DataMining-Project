@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -63,13 +63,52 @@ def main():
             with console.status("[bold magenta]Working on it...[/bold magenta]", spinner="dots"):
                 response = agent.callAgent(query)
             
-            # Display AI responses
-            for message in response.get("messages", []):
-                if isinstance(message, AIMessage):
+            # Display tool calls and final response
+            messages = response.get("messages", [])
+            
+            # Track tool calls from this query only (reset for each query)
+            # We only want to show tool calls from the current query, not historical ones
+            displayed_tool_calls = set()
+            
+            # Find the index where the current query starts
+            # Tool calls before this point are from previous queries
+            current_query_start_idx = 0
+            for i in range(len(messages) - 1, -1, -1):
+                if hasattr(messages[i], 'content') and query in str(messages[i].content):
+                    current_query_start_idx = i
+                    break
+            
+            # Only display tool calls from the current query (after current_query_start_idx)
+            for i, message in enumerate(messages):
+                if i < current_query_start_idx:
+                    continue  # Skip messages from previous queries
+                    
+                # Display tool calls
+                if isinstance(message, AIMessage) and hasattr(message, 'tool_calls') and message.tool_calls:
+                    for tool_call in message.tool_calls:
+                        tool_id = tool_call.get('id', '')
+                        if tool_id and tool_id not in displayed_tool_calls:
+                            displayed_tool_calls.add(tool_id)
+                            tool_name = tool_call.get('name', 'Unknown Tool')
+                            tool_args = tool_call.get('args', {})
+                            
+                            console.print(
+                                Panel(
+                                    f"[yellow]Tool:[/yellow] {tool_name}\n[dim]Args: {tool_args}[/dim]",
+                                    title="[bold yellow]🔧 Tool Call[/bold yellow]",
+                                    border_style="yellow",
+                                    box=box.ROUNDED,
+                                )
+                            )
+            
+            # Display only the final AI response
+            if messages:
+                last_message = messages[-1]
+                if isinstance(last_message, AIMessage):
                     ai_text = (
-                        message.text
-                        if isinstance(message.text, str)
-                        else str(message.text)
+                        last_message.text
+                        if isinstance(last_message.text, str)
+                        else str(last_message.text)
                     )
                     if ai_text.strip():
                         console.print(
