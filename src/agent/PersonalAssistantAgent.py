@@ -162,13 +162,16 @@ class PersonalAssistantAgent:
           * DRIVE (driving, default)
           * WALK (walking)
           * BICYCLE (cycling)
-          * TRANSIT (public transportation)
-        - Optionally ask about route preferences:
+          * TRANSIT (public transportation - bus, MTR, train)
+        - Optionally ask about route preferences (for DRIVE/WALK/BICYCLE only):
           * TRAFFIC_AWARE (fastest with real-time traffic, default)
           * FUEL_EFFICIENT (save fuel)
           * TRAFFIC_AWARE_OPTIMAL (balanced speed and distance)
         - Only call `getDirections` after collecting all necessary information.
+        - CRITICAL: Only provide information returned by the tools. Never make up transit routes, bus numbers, or travel times.
+        - If the tool returns an error, inform the user and suggest alternatives (e.g., try a different mode or use Google Maps directly).
         - Present the route with clear distance, duration, and step-by-step directions.
+        - For TRANSIT mode, include specific bus/train lines, stops, and transfer information.
         - Include traffic warnings and toll information if available.
         
         If the user asks for any kind of STUDY PLAN, INTERVIEW PLAN, LEARNING ROADMAP, or PREPARATION GUIDE:
