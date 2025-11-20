@@ -40,10 +40,6 @@ class Settings(BaseSettings):
     )
     
     # Google Cloud Configuration
-    google_cloud_auth_email: str = Field(
-        ...,
-        description="Google Cloud authenticated email address"
-    )
     google_oauth_client_id: str = Field(
         ...,
         description="Google OAuth 2.0 Client ID"

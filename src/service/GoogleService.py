@@ -2,6 +2,7 @@ from __future__ import print_function
 import os.path
 import base64
 import pickle
+import json
 from datetime import datetime
 from email.mime.text import MIMEText
 from googleapiclient.discovery import build
@@ -20,11 +21,14 @@ class GoogleService:
     def __init__(self):
         # Gmail API scope for sending emails, events, calendar, drive
         self._SCOPES = settings.get_google_scopes()
+        self._user_info = None  # 缓存用户信息
+        self._creds = None  # 缓存认证凭证
 
     def sendEmail(self, to, subject, body):
         creds = self._get_credentials()
         service = build('gmail', 'v1', credentials=creds)
-        message = self._create_message(sender=settings.google_cloud_auth_email, to=to, subject=subject, message_text=body)
+        user_info = self.get_user_info()
+        message = self._create_message(sender=user_info['email'], to=to, subject=subject, message_text=body)
         self._send_message(service, "me", message)
 
     def searchEmail(self, query):
@@ -222,15 +226,25 @@ class GoogleService:
 
     def _get_credentials(self):
         """Handles authentication and saves a token for reuse."""
+        # ========================================
+        # 1. 返回缓存的凭证 (避免重复验证)
+        # ========================================
+        if self._creds and self._creds.valid:
+            return self._creds
+
         creds = None
         token_path = settings.google_token_path
-        
-        # Try to load existing token
+
+        # ========================================
+        # 2. 尝试从 token.pickle 加载
+        # ========================================
         if token_path.exists():
             with open(token_path, 'rb') as token:
                 creds = pickle.load(token)
 
-        # Validate and refresh if needed
+        # ========================================
+        # 3. 验证并刷新 token
+        # ========================================
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 try:
@@ -238,15 +252,23 @@ class GoogleService:
                 except Exception as e:
                     console.print(f"[yellow]Token refresh failed: {e}[/yellow]")
                     creds = None
-            
-            # Need new authentication
+
+            # ========================================
+            # 4. 需要重新认证
+            # ========================================
             if not creds:
                 creds = self._authenticate_device_flow()
-            
-            # Save the credentials
+
+            # ========================================
+            # 5. 保存新 token
+            # ========================================
             with open(token_path, 'wb') as token:
                 pickle.dump(creds, token)
-        
+
+        # ========================================
+        # 6. 缓存凭证到内存
+        # ========================================
+        self._creds = creds
         return creds
     
     def _authenticate_device_flow(self):
@@ -295,6 +317,63 @@ class GoogleService:
         
         console.print("[bold green]✅ Authentication completed successfully![/bold green]\n")
         return creds
+
+    def get_user_info(self) -> dict:
+        """
+        从 Google OAuth 获取用户信息 (email, name)
+        使用缓存机制避免重复请求
+
+        Returns:
+            dict: {'email': str, 'name': str}
+        """
+        # ========================================
+        # 1. 检查内存缓存
+        # ========================================
+        if self._user_info:
+            return self._user_info
+
+        # ========================================
+        # 2. 检查持久化缓存 (user_info.json)
+        # ========================================
+        user_info_path = settings.google_token_path.parent / "user_info.json"
+        if user_info_path.exists():
+            try:
+                with open(user_info_path, 'r', encoding='utf-8') as f:
+                    self._user_info = json.load(f)
+                    console.print(f"[green]✓ User loaded from cache: {self._user_info['name']} ({self._user_info['email']})[/green]")
+                    return self._user_info
+            except Exception as e:
+                console.print(f"[yellow]Failed to load cached user info: {e}[/yellow]")
+
+        # ========================================
+        # 3. 从 Gmail API 获取用户邮箱 (不触发 openid scope)
+        # ========================================
+        try:
+            creds = self._get_credentials()
+            gmail_service = build('gmail', 'v1', credentials=creds)
+            profile = gmail_service.users().getProfile(userId='me').execute()
+
+            self._user_info = {
+                'email': profile.get('emailAddress', 'unknown@example.com'),
+                'name': profile.get('emailAddress', 'User').split('@')[0].title()  # 从邮箱提取用户名
+            }
+
+            # ========================================
+            # 4. 持久化缓存到本地
+            # ========================================
+            try:
+                with open(user_info_path, 'w', encoding='utf-8') as f:
+                    json.dump(self._user_info, f, indent=2)
+            except Exception as e:
+                console.print(f"[yellow]Failed to cache user info: {e}[/yellow]")
+
+            console.print(f"[green]✓ User authenticated: {self._user_info['name']} ({self._user_info['email']})[/green]")
+            return self._user_info
+
+        except Exception as e:
+            console.print(f"[red]Failed to fetch user info: {e}[/red]")
+            # 返回默认值避免崩溃
+            return {'email': 'unknown@example.com', 'name': 'User'}
 
 
     def _create_message(self, sender, to, subject, message_text):

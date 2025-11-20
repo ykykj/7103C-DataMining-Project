@@ -1,10 +1,12 @@
 """
 Google Maps API Tools Integration
 Provides location search, geocoding, directions, and places functionality
+Uses Google Routes API v2 for advanced routing with real-time traffic
 """
 from typing import List, Optional, Dict, Any
 from langchain.tools import tool
 import googlemaps
+import requests
 from datetime import datetime
 from src.config import settings
 
@@ -187,11 +189,12 @@ def reverseGeocode(latitude: float, longitude: float, language: str = "zh-CN") -
 def getDirections(
     origin: str,
     destination: str,
-    mode: str = "driving",
-    language: str = "zh-CN"
+    mode: str = "DRIVE",
+    language: str = "zh-CN",
+    route_preference: str = "TRAFFIC_AWARE"
 ) -> str:
     """
-    Get directions between two locations.
+    Get directions between two locations using Google Routes API v2.
     
     Parameters:
     ----------
@@ -200,9 +203,12 @@ def getDirections(
     destination : str
         Destination location (address or place name)
     mode : str, optional
-        Travel mode: "driving", "walking", "bicycling", or "transit" (default: "driving")
+        Travel mode: "DRIVE", "WALK", "BICYCLE", or "TRANSIT" (default: "DRIVE")
     language : str, optional
         Language for results (default: "zh-CN")
+    route_preference : str, optional
+        Route preference: "TRAFFIC_AWARE" (fastest with traffic), "TRAFFIC_AWARE_OPTIMAL" (balanced),
+        "TRAFFIC_UNAWARE" (ignore traffic), "FUEL_EFFICIENT" (save fuel) (default: "TRAFFIC_AWARE")
     
     Returns:
     -------
@@ -211,52 +217,130 @@ def getDirections(
     
     Notes:
     -----
-    - Supports multiple travel modes
-    - Provides detailed turn-by-turn directions
-    - Includes distance and estimated travel time
+    - Uses Google Routes API v2 for better accuracy and real-time traffic
+    - Supports multiple travel modes and route preferences
+    - Provides detailed turn-by-turn directions with traffic-aware ETAs
+    - Includes toll information and route quality indicators
     """
-    client = _get_gmaps_client()
-    if not client:
+    import requests
+    import re
+    
+    if not settings.google_maps_api_key:
         return "Error: Google Maps API not configured. Please set GOOGLE_MAPS_API_KEY."
     
     try:
-        # Get directions
-        now = datetime.now()
-        results = client.directions(
-            origin,
-            destination,
-            mode=mode,
-            language=language,
-            departure_time=now
-        )
+        # Map old mode names to new API format
+        mode_mapping = {
+            "driving": "DRIVE",
+            "walking": "WALK",
+            "bicycling": "BICYCLE",
+            "transit": "TRANSIT"
+        }
+        mode = mode_mapping.get(mode.lower(), mode.upper())
         
-        if not results:
+        # Routes API v2 endpoint
+        url = "https://routes.googleapis.com/directions/v2:computeRoutes"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": settings.google_maps_api_key,
+            "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.steps,routes.legs.localizedValues,routes.description,routes.warnings,routes.travelAdvisory"
+        }
+        
+        payload = {
+            "origin": {
+                "address": origin
+            },
+            "destination": {
+                "address": destination
+            },
+            "travelMode": mode,
+            "routingPreference": route_preference,
+            "languageCode": language,
+            "units": "METRIC",
+            "computeAlternativeRoutes": False
+        }
+        
+        response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        if not data.get('routes'):
             return f"Unable to find route from {origin} to {destination}"
         
-        # Get the first route
-        route = results[0]
+        # Get the first (best) route
+        route = data['routes'][0]
         leg = route['legs'][0]
         
         output = []
-        output.append(f"From {leg['start_address']}")
-        output.append(f"To {leg['end_address']}\n")
-        output.append(f"Distance: {leg['distance']['text']}")
-        output.append(f"Duration: {leg['duration']['text']}")
-        output.append(f"Travel mode: {mode}\n")
         
-        # Add step-by-step directions
+        # Basic route information
+        output.append(f"Route: {origin} → {destination}")
+        
+        # Distance and duration
+        distance_km = route.get('distanceMeters', 0) / 1000
+        duration_text = leg.get('localizedValues', {}).get('duration', {}).get('text', 'N/A')
+        output.append(f"Distance: {distance_km:.1f} km")
+        output.append(f"Duration: {duration_text}")
+        output.append(f"Travel mode: {mode}")
+        
+        # Route description (if available)
+        if route.get('description'):
+            output.append(f"Route: {route['description']}")
+        
+        # Traffic and warnings
+        if route.get('travelAdvisory'):
+            advisory = route['travelAdvisory']
+            if advisory.get('tollInfo'):
+                output.append("⚠️  This route includes tolls")
+            if advisory.get('speedReadingIntervals'):
+                output.append("🚦 Real-time traffic data available")
+        
+        if route.get('warnings'):
+            for warning in route['warnings']:
+                output.append(f"⚠️  {warning}")
+        
+        output.append("")
+        
+        # Step-by-step directions
         output.append("Directions:")
-        for idx, step in enumerate(leg['steps'], 1):
-            # Remove HTML tags from instructions
-            instruction = step['html_instructions'].replace('<b>', '').replace('</b>', '')
-            instruction = instruction.replace('<div style="font-size:0.9em">', ' - ')
-            instruction = instruction.replace('</div>', '')
+        steps = leg.get('steps', [])
+        
+        for idx, step in enumerate(steps, 1):
+            # Get navigation instruction
+            instruction = step.get('navigationInstruction', {}).get('instructions', '')
+            
+            if not instruction:
+                # Fallback to maneuver type
+                maneuver = step.get('navigationInstruction', {}).get('maneuver', 'STRAIGHT')
+                instruction = maneuver.replace('_', ' ').title()
+            
+            # Clean HTML tags if present
+            instruction = re.sub(r'<[^>]+>', '', instruction)
+            
+            # Distance and duration for this step
+            step_distance = step.get('distanceMeters', 0)
+            step_duration = step.get('staticDuration', '')
             
             output.append(f"{idx}. {instruction}")
-            output.append(f"   Distance: {step['distance']['text']}, Duration: {step['duration']['text']}")
+            
+            if step_distance > 0:
+                if step_distance >= 1000:
+                    output.append(f"   Distance: {step_distance/1000:.1f} km")
+                else:
+                    output.append(f"   Distance: {step_distance:.0f} m")
         
         return "\n".join(output)
     
+    except requests.exceptions.HTTPError as e:
+        error_detail = ""
+        try:
+            error_data = e.response.json()
+            error_detail = error_data.get('error', {}).get('message', str(e))
+        except:
+            error_detail = str(e)
+        return f"Routes API error: {error_detail}"
     except Exception as e:
         return f"Directions query failed: {str(e)}"
 
