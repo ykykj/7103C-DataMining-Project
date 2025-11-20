@@ -1,16 +1,17 @@
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 from src.tools.AgentTools import (
-    sendEmail, 
+    sendEmail,
     createBookingEvent,
     readCalendarEvents,
-    searchEmail, 
+    searchEmail,
     createDriveDocument,
     getCurrentTime,
     webSearch,
     GOOGLE_MAPS_AVAILABLE,
     get_google_maps_tools
 )
+from src.service.GoogleService import GoogleService
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.rate_limiters import InMemoryRateLimiter
 from langchain.agents.middleware import ContextEditingMiddleware, ClearToolUsesEdit, SummarizationMiddleware
@@ -21,6 +22,10 @@ from src.config import settings
 class PersonalAssistantAgent:
 
     def __init__(self):
+        ## 获取真实用户信息 (从 Google OAuth)
+        google_service = GoogleService()
+        self._user_info = google_service.get_user_info()
+
         ## setting up model with DeepSeek API
         self._model = ChatOpenAI(
             model=settings.deepseek_model,
@@ -93,8 +98,9 @@ class PersonalAssistantAgent:
         )
 
     def _getSystemPrompt(self):
-        return """
-        You are an intelligent personal assistant for Mohamed. 
+        user_name = self._user_info.get('name', 'User')
+        return f"""
+        You are an intelligent personal assistant for {user_name}.
         Always respond respectfully, helpfully, and professionally.
 
         If the user wants to send an email:
@@ -149,6 +155,21 @@ class PersonalAssistantAgent:
         - Provide clear, formatted results with addresses, distances, and relevant details.
         - Common queries: location search, directions, nearby places (restaurants, hotels, gas stations, etc.)
         - Available tools: searchPlace, geocodeAddress, reverseGeocode, getDirections, findNearbyPlaces
+        
+        When the user asks for directions or navigation:
+        - ALWAYS ask for their current location/starting point if not provided.
+        - ALWAYS ask for their preferred travel mode if not specified:
+          * DRIVE (driving, default)
+          * WALK (walking)
+          * BICYCLE (cycling)
+          * TRANSIT (public transportation)
+        - Optionally ask about route preferences:
+          * TRAFFIC_AWARE (fastest with real-time traffic, default)
+          * FUEL_EFFICIENT (save fuel)
+          * TRAFFIC_AWARE_OPTIMAL (balanced speed and distance)
+        - Only call `getDirections` after collecting all necessary information.
+        - Present the route with clear distance, duration, and step-by-step directions.
+        - Include traffic warnings and toll information if available.
         
         If the user asks for any kind of STUDY PLAN, INTERVIEW PLAN, LEARNING ROADMAP, or PREPARATION GUIDE:
             1. Generate the plan in CLEAN PLAIN TEXT (no Markdown).
