@@ -1,6 +1,6 @@
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument
+from tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument, getWeather
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.rate_limiters import InMemoryRateLimiter
 from dotenv import load_dotenv
@@ -28,7 +28,7 @@ class PersonalAssistantAgent:
 
         ## creating an agent
         self._agent = create_agent(model=self._model,
-                                    tools=[sendEmail, createBookingEvent, searchEmail, createDriveDocument],
+                                    tools=[sendEmail, createBookingEvent, searchEmail, createDriveDocument, getWeather],
                                     system_prompt=self._getSystemPrompt(),  checkpointer=InMemorySaver())
 
     def callAgent(self, query):
@@ -47,6 +47,13 @@ class PersonalAssistantAgent:
         You are an intelligent personal assistant for Mohamed. 
         Always respond respectfully, helpfully, and professionally.
 
+        If the user wants to check weather:
+        - Use the `getWeather` tool.
+        - Extract the location from the user's query.
+        - If a specific date is mentioned, include it; otherwise query current weather.
+        - Present the weather information in a clear, readable format.
+        - Include temperature, conditions, humidity, and any alerts if available.
+        
         If the user wants to send an email:
         - Use the `sendEmail` tool.
         - Collect all necessary details (recipient(s), subject, and body).

@@ -2,10 +2,12 @@ from datetime import datetime
 
 from langchain.tools import tool
 from service.GoogleService import GoogleService
+from service.WeatherService import WeatherService
 
 
 
 googleService = GoogleService()
+weatherService = WeatherService()
 
 @tool
 def sendEmail(to_list: str, subject: str, message_text: str):
@@ -80,3 +82,30 @@ def createDriveDocument(documentName : str, documentContent : str):
     """
     print("About to create drive document")
     return googleService.createDocumentInDrive(documentName, documentContent)
+
+@tool
+def getWeather(location: str, date: str = None):
+    """
+    Queries weather information for a specific location and date.
+    
+    Parameters:
+    ----------
+    location : str
+        The city or location name (e.g., "Beijing", "New York", "Shanghai")
+    date : str, optional
+        The date to query weather for in format "YYYY-MM-DD".
+        If not provided, returns current weather.
+    
+    Returns:
+    -------
+    str
+        Weather information including temperature, conditions, humidity, etc.
+    
+    Notes:
+    -----
+    - Supports major cities worldwide
+    - Date parameter is optional; defaults to current weather
+    - Returns forecast data if date is in the future
+    """
+    print(f"Querying weather for {location}...")
+    return weatherService.get_weather(location, date)
