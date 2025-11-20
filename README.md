@@ -28,9 +28,21 @@ This assistant can generate study or interview preparation plans, interact with 
 * Uploads generated files to Drive.
 * Allows Drive-based workflows through the agent.
 
-### **✓ Google Calender**
+### **✓ Google Calendar**
 
 * Can create calendar events with or without invited participants.
+* Read and query calendar events within time ranges.
+
+### **✓ Google Maps MCP Integration**
+
+* Official Google Maps MCP Server integration
+* Search for places and points of interest
+* Geocoding and reverse geocoding
+* Directions with multiple travel modes
+* Distance matrix calculations
+* Nearby places search
+* Supports both Chinese and English queries
+* Automatic tool discovery via MCP protocol
 
 ### **✓ CLI Interface**
 
@@ -51,7 +63,9 @@ This assistant can generate study or interview preparation plans, interact with 
 | **Python 3.10+**          | Main runtime             |
 | **LangChain**             | Agent + Tools            |
 | **Google Gemini 2.5 Pro** | LLM model                |
-| **Google Workspace APIs** | Gmail + Drive + Calender |
+| **Google Workspace APIs** | Gmail + Drive + Calendar |
+| **Google Maps MCP**       | Location & Navigation    |
+| **MCP Protocol**          | Tool Integration         |
 | **OAuth 2.0**             | Authentication           |
 | **Rich**                  | CLI styling              |
 
@@ -131,13 +145,54 @@ The application loads OAuth credentials from this file.
 
 ## 🔑 **Environment Variables**
 
-Only **one** environment variable is required:
+Create a `.env` file with the following variables:
 
 ```env
-GOOGLE_API_KEY=your_gemini_2_5_pro_api_key
+# DeepSeek API (for LLM)
+DEEPSEEK_API_KEY=your_deepseek_api_key
+
+# Google Cloud
+GOOGLE_CLOUD_AUTH_EMAIL=your-email@gmail.com
+GOOGLE_OAUTH_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_OAUTH_CLIENT_SECRET=your-client-secret
+
+# Google Maps API (for location services)
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+
+# Optional: Web Search
+TAVILY_API_KEY=your_tavily_api_key
 ```
 
-This API key is used **only** for Gemini 2.5 Pro calls.
+See `.env.example` for a complete configuration template.
+
+### **Google Maps MCP Setup**
+
+**Prerequisites:**
+- Node.js and npm (for running MCP server)
+
+**Steps:**
+1. Install Node.js from [nodejs.org](https://nodejs.org/)
+2. Visit [Google Cloud Console](https://console.cloud.google.com/google/maps-apis)
+3. Enable these APIs:
+   - Places API
+   - Geocoding API
+   - Directions API
+   - Distance Matrix API
+4. Create an API key
+5. Add it to your `.env` file
+
+**Quick Start:**
+```bash
+# Run installation script
+install_google_maps.bat  # Windows
+# or
+./install_google_maps.ps1  # PowerShell
+
+# Test configuration
+python test_google_maps.py
+```
+
+For detailed setup instructions, see `GOOGLE_MAPS_SETUP.md` or `QUICKSTART.md`.
 
 ---
 

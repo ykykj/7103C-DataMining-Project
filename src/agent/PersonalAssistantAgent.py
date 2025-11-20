@@ -2,11 +2,14 @@ from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 from src.tools.AgentTools import (
     sendEmail, 
-    createBookingEvent, 
+    createBookingEvent,
+    readCalendarEvents,
     searchEmail, 
     createDriveDocument,
     getCurrentTime,
-    webSearch
+    webSearch,
+    GOOGLE_MAPS_AVAILABLE,
+    get_google_maps_tools
 )
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.rate_limiters import InMemoryRateLimiter
@@ -33,16 +36,27 @@ class PersonalAssistantAgent:
         )
 
         ## creating an agent with memory management middleware
+        # Build tools list
+        tools_list = [
+            sendEmail, 
+            createBookingEvent,
+            readCalendarEvents,
+            searchEmail, 
+            createDriveDocument,
+            getCurrentTime,
+            webSearch
+        ]
+        
+        # Add Google Maps tools if available
+        if GOOGLE_MAPS_AVAILABLE:
+            gmaps_tools = get_google_maps_tools()
+            if gmaps_tools:
+                tools_list.extend(gmaps_tools)
+                print(f"✓ Loaded {len(gmaps_tools)} Google Maps tools")
+        
         self._agent = create_agent(
             model=self._model,
-            tools=[
-                sendEmail, 
-                createBookingEvent, 
-                searchEmail, 
-                createDriveDocument,
-                getCurrentTime,
-                webSearch
-            ],
+            tools=tools_list,
             system_prompt=self._getSystemPrompt(),
             checkpointer=InMemorySaver(),
             middleware=[
@@ -95,6 +109,15 @@ class PersonalAssistantAgent:
         - Collect required details: summary, description, start_time, end_time, and attendees.
         - Suggest professional wording for summary and description if not provided.
         - After creation, provide a short confirmation and include the event link.
+        
+        If the user wants to read or check calendar events:
+        - Use the `readCalendarEvents` tool.
+        - First use `getCurrentTime` to get the current date/time if needed.
+        - For queries like "today's events", set start_time to today 00:00 and end_time to today 23:59.
+        - For "this week's events", calculate the appropriate date range.
+        - For "upcoming events", use current time as start and a reasonable future date as end.
+        - Present events in a clear, organized format with all relevant details.
+        - If no events are found, inform the user politely.
 
         If the user wants to search emails:
         - Use the `searchEmail` tool.
@@ -119,6 +142,13 @@ class PersonalAssistantAgent:
         - Summarize the search results in a helpful way.
         - Use topic="news" for news-related queries.
         - Cite sources by including URLs when providing information.
+        
+        If the user asks about locations, addresses, or navigation:
+        - Use available Google Maps tools to find addresses, points of interest, or navigation routes.
+        - Support both Chinese and English location queries.
+        - Provide clear, formatted results with addresses, distances, and relevant details.
+        - Common queries: location search, directions, nearby places (restaurants, hotels, gas stations, etc.)
+        - Available tools: searchPlace, geocodeAddress, reverseGeocode, getDirections, findNearbyPlaces
         
         If the user asks for any kind of STUDY PLAN, INTERVIEW PLAN, LEARNING ROADMAP, or PREPARATION GUIDE:
             1. Generate the plan in CLEAN PLAIN TEXT (no Markdown).

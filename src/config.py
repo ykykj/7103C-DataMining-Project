@@ -100,6 +100,12 @@ class Settings(BaseSettings):
         description="Tavily API key for web search functionality"
     )
     
+    # Google Maps API Configuration
+    google_maps_api_key: Optional[str] = Field(
+        default=None,
+        description="Google Maps API key for location and map services"
+    )
+    
     @field_validator("google_token_path")
     @classmethod
     def validate_path(cls, v: Path) -> Path:

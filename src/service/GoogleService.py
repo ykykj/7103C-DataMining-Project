@@ -85,6 +85,25 @@ class GoogleService:
         creds = self._get_credentials()
         service = build('calendar', 'v3', credentials=creds)
 
+        # Validate and filter attendee emails
+        valid_attendees = []
+        invalid_emails = []
+        
+        if attendees_emails:
+            from email_validator import validate_email, EmailNotValidError
+            
+            for email in attendees_emails:
+                if not isinstance(email, str):
+                    invalid_emails.append(f"{email} (not a string)")
+                    continue
+                
+                try:
+                    # Validate email using email-validator library
+                    validated = validate_email(email.strip(), check_deliverability=False)
+                    valid_attendees.append({'email': validated.normalized})
+                except EmailNotValidError as e:
+                    invalid_emails.append(f"{email} ({str(e)})")
+
         event = {
             'summary': summary,
             'description': description,
@@ -96,11 +115,81 @@ class GoogleService:
                 'dateTime': end_time.isoformat(),
                 'timeZone': settings.google_calendar_timezone,
             },
-            'attendees': [{'email': email} for email in attendees_emails] if attendees_emails else [],
+            'attendees': valid_attendees,
         }
 
         created_event = service.events().insert(calendarId='primary', body=event).execute()
-        return f"Event created: {created_event.get('htmlLink')}"
+        
+        # Build result message with detailed information
+        result = f"Event created successfully: {created_event.get('htmlLink')}\n"
+        result += f"Title: {summary}\n"
+        result += f"Time: {start_time.strftime('%Y-%m-%d %H:%M')} to {end_time.strftime('%Y-%m-%d %H:%M')}"
+        
+        if valid_attendees:
+            result += f"\n\nValid attendees ({len(valid_attendees)}):\n"
+            result += "\n".join([f"  - {a['email']}" for a in valid_attendees])
+        
+        if invalid_emails:
+            result += f"\n\nInvalid emails ({len(invalid_emails)}) - NOT added to event:\n"
+            result += "\n".join([f"  - {email}" for email in invalid_emails])
+            result += "\n\nPlease provide valid email addresses for these attendees."
+        
+        return result
+
+    def getCalendarEvents(self, time_min: datetime, time_max: datetime, max_results: int = 10):
+        """
+        Retrieves calendar events within a specified time range.
+
+        Parameters:
+        - time_min: datetime -> Start of time range
+        - time_max: datetime -> End of time range
+        - max_results: int -> Maximum number of events to return (default: 10)
+
+        Returns:
+        - list: List of calendar events with details
+        """
+        import pytz
+        creds = self._get_credentials()
+        service = build('calendar', 'v3', credentials=creds)
+
+        # Ensure datetime objects have timezone info
+        tz = pytz.timezone(settings.google_calendar_timezone)
+        if time_min.tzinfo is None:
+            time_min = tz.localize(time_min)
+        if time_max.tzinfo is None:
+            time_max = tz.localize(time_max)
+
+        events_result = service.events().list(
+            calendarId='primary',
+            timeMin=time_min.isoformat(),
+            timeMax=time_max.isoformat(),
+            maxResults=max_results,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+
+        events = events_result.get('items', [])
+
+        if not events:
+            return []
+
+        formatted_events = []
+        for event in events:
+            start = event['start'].get('dateTime', event['start'].get('date'))
+            end = event['end'].get('dateTime', event['end'].get('date'))
+            
+            formatted_events.append({
+                'id': event['id'],
+                'summary': event.get('summary', 'No Title'),
+                'description': event.get('description', ''),
+                'start': start,
+                'end': end,
+                'location': event.get('location', ''),
+                'attendees': [attendee.get('email') for attendee in event.get('attendees', [])],
+                'htmlLink': event.get('htmlLink', '')
+            })
+
+        return formatted_events
 
     def createDocumentInDrive(self, title="New Document", content="Hello, this is a test document created by Python!"):
         """
