@@ -78,6 +78,28 @@ class Settings(BaseSettings):
         description="Maximum burst size for rate limiting"
     )
     
+    # Memory Management Configuration
+    max_context_tokens: int = Field(
+        default=100000,
+        gt=0,
+        description="Maximum tokens allowed in context before triggering memory compression"
+    )
+    memory_compression_target: int = Field(
+        default=50000,
+        gt=0,
+        description="Target token count after memory compression"
+    )
+    enable_smart_memory: bool = Field(
+        default=True,
+        description="Enable LLM-based intelligent memory management"
+    )
+    
+    # Tavily API Configuration
+    tavily_api_key: Optional[str] = Field(
+        default=None,
+        description="Tavily API key for web search functionality"
+    )
+    
     @field_validator("google_token_path")
     @classmethod
     def validate_path(cls, v: Path) -> Path:

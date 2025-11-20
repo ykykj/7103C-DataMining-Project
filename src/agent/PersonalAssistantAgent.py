@@ -1,8 +1,16 @@
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from src.tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument
+from src.tools.AgentTools import (
+    sendEmail, 
+    createBookingEvent, 
+    searchEmail, 
+    createDriveDocument,
+    getCurrentTime,
+    webSearch
+)
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.rate_limiters import InMemoryRateLimiter
+from langchain.agents.middleware import ContextEditingMiddleware, ClearToolUsesEdit, SummarizationMiddleware
 
 from src.config import settings
 
@@ -24,10 +32,40 @@ class PersonalAssistantAgent:
             max_bucket_size=settings.rate_limit_max_burst,
         )
 
-        ## creating an agent
-        self._agent = create_agent(model=self._model,
-                                    tools=[sendEmail, createBookingEvent, searchEmail, createDriveDocument],
-                                    system_prompt=self._getSystemPrompt(),  checkpointer=InMemorySaver())
+        ## creating an agent with memory management middleware
+        self._agent = create_agent(
+            model=self._model,
+            tools=[
+                sendEmail, 
+                createBookingEvent, 
+                searchEmail, 
+                createDriveDocument,
+                getCurrentTime,
+                webSearch
+            ],
+            system_prompt=self._getSystemPrompt(),
+            checkpointer=InMemorySaver(),
+            middleware=[
+                # 1. Context Editing Middleware: Automatically clear old tool call outputs
+                ContextEditingMiddleware(
+                    edits=[
+                        ClearToolUsesEdit(
+                            trigger=settings.max_context_tokens,  # Trigger when token limit is reached
+                            keep=5,  # Keep the most recent 5 tool call results
+                            clear_tool_inputs=False,  # Keep tool call parameters for context understanding
+                            exclude_tools=[],  # Don't exclude any tools
+                            placeholder="[Cleared: old tool call result]",
+                        ),
+                    ],
+                ),
+                # 2. Summarization Middleware: Let LLM intelligently summarize conversation history
+                SummarizationMiddleware(
+                    model=self._model,
+                    max_tokens_before_summary=settings.max_context_tokens,  # Trigger summary when exceeding this token count
+                    messages_to_keep=10,  # Keep the most recent 10 messages after summarization
+                ),
+            ]
+        )
 
     def callAgent(self, query):
         return self._agent.invoke(
@@ -69,6 +107,18 @@ class PersonalAssistantAgent:
         - If they only mention subject/body/sender, search accordingly.
         - Summarize results without including full email bodies.
         - If the user requests email statistics (e.g., count, frequency), calculate and report them.
+        
+        If the user needs to know the current time or date:
+        - Use the `getCurrentTime` tool to get the current date and time.
+        - Use this when scheduling events, checking deadlines, or answering time-related questions.
+        - The tool returns time in YYYY-MM-DD HH:MM:SS format.
+        
+        If the user asks for current information, news, or facts from the internet:
+        - Use the `webSearch` tool to search the web.
+        - Provide clear, relevant search queries.
+        - Summarize the search results in a helpful way.
+        - Use topic="news" for news-related queries.
+        - Cite sources by including URLs when providing information.
         
         If the user asks for any kind of STUDY PLAN, INTERVIEW PLAN, LEARNING ROADMAP, or PREPARATION GUIDE:
             1. Generate the plan in CLEAN PLAIN TEXT (no Markdown).
