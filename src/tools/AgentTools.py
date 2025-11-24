@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 import pytz
-
+from src.service.WeatherService import WeatherService
 from langchain.tools import tool
 from src.service.GoogleService import GoogleService
 from src.config import settings
@@ -19,7 +19,7 @@ def _get_tavily_client():
 
 
 googleService = GoogleService()
-
+weatherService = WeatherService()
 # Import Google Maps tools (Direct API)
 try:
     from src.tools.GoogleMapTools import get_google_maps_tools
@@ -163,6 +163,33 @@ def createDriveDocument(documentName : str, documentContent : str):
     """
     print("About to create drive document")
     return googleService.createDocumentInDrive(documentName, documentContent)
+
+@tool
+def getWeather(location: str, date: str = None):
+    """
+    Queries weather information for a specific location and date.
+    
+    Parameters:
+    ----------
+    location : str
+        The city or location name (e.g., "Beijing", "New York", "Shanghai")
+    date : str, optional
+        The date to query weather for in format "YYYY-MM-DD".
+        If not provided, returns current weather.
+    
+    Returns:
+    -------
+    str
+        Weather information including temperature, conditions, humidity, etc.
+    
+    Notes:
+    -----
+    - Supports major cities worldwide
+    - Date parameter is optional; defaults to current weather
+    - Returns forecast data if date is in the future
+    """
+    print(f"Querying weather for {location}...")
+    return weatherService.get_weather(location, date)
 
 @tool
 def getCurrentTime() -> str:

@@ -5,7 +5,7 @@ Run with: python main.py or uv run main.py
 import sys
 import time
 from pathlib import Path
-
+import os
 from langchain_core.messages import AIMessage, ToolMessage
 from rich.console import Console
 from rich.panel import Panel

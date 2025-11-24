@@ -9,7 +9,8 @@ from src.tools.AgentTools import (
     getCurrentTime,
     webSearch,
     GOOGLE_MAPS_AVAILABLE,
-    get_google_maps_tools
+    get_google_maps_tools,
+    getWeather
 )
 from src.service.GoogleService import GoogleService
 from langgraph.checkpoint.memory import InMemorySaver
@@ -17,7 +18,11 @@ from langchain_core.rate_limiters import InMemoryRateLimiter
 from langchain.agents.middleware import ContextEditingMiddleware, ClearToolUsesEdit, SummarizationMiddleware
 
 from src.config import settings
+from dotenv import load_dotenv
+import os
 
+# Load environment variables
+load_dotenv()
 
 class PersonalAssistantAgent:
 
@@ -49,7 +54,8 @@ class PersonalAssistantAgent:
             searchEmail, 
             createDriveDocument,
             getCurrentTime,
-            webSearch
+            webSearch,
+            getWeather
         ]
         
         # Add Google Maps tools if available
@@ -110,6 +116,13 @@ class PersonalAssistantAgent:
         - If the subject is missing, create one based on the context.
         - After sending, summarize the action without including the full email body.
 
+        If the user wants to check weather:
+        - Use the `getWeather` tool.
+        - Extract the location from the user's query.
+        - If a specific date is mentioned, include it; otherwise query current weather.
+        - Present the weather information in a clear, readable format.
+        - Include temperature, conditions, humidity, and any alerts if available.
+        
         If the user wants to create a calendar event:
         - Use the `createBookingEvent` tool.
         - Collect required details: summary, description, start_time, end_time, and attendees.
