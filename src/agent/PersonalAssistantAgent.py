@@ -1,35 +1,90 @@
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument
+from src.tools.AgentTools import (
+    sendEmail,
+    createBookingEvent,
+    readCalendarEvents,
+    searchEmail,
+    createDriveDocument,
+    getCurrentTime,
+    webSearch,
+    GOOGLE_MAPS_AVAILABLE,
+    get_google_maps_tools
+)
+from src.service.GoogleService import GoogleService
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.rate_limiters import InMemoryRateLimiter
-from dotenv import load_dotenv
-import os
+from langchain.agents.middleware import ContextEditingMiddleware, ClearToolUsesEdit, SummarizationMiddleware
 
-# Load environment variables
-load_dotenv()
+from src.config import settings
+
 
 class PersonalAssistantAgent:
 
     def __init__(self):
+        ## 获取真实用户信息 (从 Google OAuth)
+        google_service = GoogleService()
+        self._user_info = google_service.get_user_info()
+
         ## setting up model with DeepSeek API
         self._model = ChatOpenAI(
-            model="deepseek-chat",
-            openai_api_key=os.getenv("DEEPSEEK_API_KEY"),
-            openai_api_base="https://api.deepseek.com",
-            temperature=0.7
+            model=settings.deepseek_model,
+            openai_api_key=settings.deepseek_api_key,
+            openai_api_base=settings.deepseek_api_base,
+            temperature=settings.deepseek_temperature
         )
 
         self._rate_limiter = InMemoryRateLimiter(
-            requests_per_second=0.2,  # <-- Super slow! We can only make a request once every 10 seconds!!
-            check_every_n_seconds=0.1,  # Wake up every 100 ms to check whether allowed to make a request,
-            max_bucket_size=10,  # Controls the maximum burst size.
+            requests_per_second=settings.rate_limit_requests_per_second,
+            check_every_n_seconds=settings.rate_limit_check_interval,
+            max_bucket_size=settings.rate_limit_max_burst,
         )
 
-        ## creating an agent
-        self._agent = create_agent(model=self._model,
-                                    tools=[sendEmail, createBookingEvent, searchEmail, createDriveDocument],
-                                    system_prompt=self._getSystemPrompt(),  checkpointer=InMemorySaver())
+        ## creating an agent with memory management middleware
+        # Build tools list
+        tools_list = [
+            sendEmail, 
+            createBookingEvent,
+            readCalendarEvents,
+            searchEmail, 
+            createDriveDocument,
+            getCurrentTime,
+            webSearch
+        ]
+        
+        # Add Google Maps tools if available
+        if GOOGLE_MAPS_AVAILABLE:
+            gmaps_tools = get_google_maps_tools()
+            if gmaps_tools:
+                tools_list.extend(gmaps_tools)
+                print(f"✓ Loaded {len(gmaps_tools)} Google Maps tools")
+        
+        self._agent = create_agent(
+            model=self._model,
+            tools=tools_list,
+            system_prompt=self._getSystemPrompt(),
+            checkpointer=InMemorySaver(),
+            middleware=[
+                # 1. Context Editing Middleware: Automatically clear old tool call outputs
+                ContextEditingMiddleware(
+                    edits=[
+                        ClearToolUsesEdit(
+                            trigger=settings.max_context_tokens,  # Trigger when token limit is reached
+                            keep=5,  # Keep the most recent 5 tool call results
+                            clear_tool_inputs=False,  # Keep tool call parameters for context understanding
+                            exclude_tools=[],  # Don't exclude any tools
+                            placeholder="[Cleared: old tool call result]",
+                        ),
+                    ],
+                ),
+                # 2. Summarization Middleware: Let LLM intelligently summarize conversation history
+                SummarizationMiddleware(
+                    model=self._model,
+                    max_tokens_before_summary=settings.max_context_tokens,  # Trigger summary when exceeding this token count
+                    messages_to_keep=10,  # Keep the most recent 10 messages after summarization
+                ),
+            ]
+        )
 
     def callAgent(self, query):
         return self._agent.invoke(
@@ -43,8 +98,9 @@ class PersonalAssistantAgent:
         )
 
     def _getSystemPrompt(self):
-        return """
-        You are an intelligent personal assistant for Mohamed. 
+        user_name = self._user_info.get('name', 'User')
+        return f"""
+        You are an intelligent personal assistant for {user_name}.
         Always respond respectfully, helpfully, and professionally.
 
         If the user wants to send an email:
@@ -59,6 +115,15 @@ class PersonalAssistantAgent:
         - Collect required details: summary, description, start_time, end_time, and attendees.
         - Suggest professional wording for summary and description if not provided.
         - After creation, provide a short confirmation and include the event link.
+        
+        If the user wants to read or check calendar events:
+        - Use the `readCalendarEvents` tool.
+        - First use `getCurrentTime` to get the current date/time if needed.
+        - For queries like "today's events", set start_time to today 00:00 and end_time to today 23:59.
+        - For "this week's events", calculate the appropriate date range.
+        - For "upcoming events", use current time as start and a reasonable future date as end.
+        - Present events in a clear, organized format with all relevant details.
+        - If no events are found, inform the user politely.
 
         If the user wants to search emails:
         - Use the `searchEmail` tool.
@@ -71,6 +136,43 @@ class PersonalAssistantAgent:
         - If they only mention subject/body/sender, search accordingly.
         - Summarize results without including full email bodies.
         - If the user requests email statistics (e.g., count, frequency), calculate and report them.
+        
+        If the user needs to know the current time or date:
+        - Use the `getCurrentTime` tool to get the current date and time.
+        - Use this when scheduling events, checking deadlines, or answering time-related questions.
+        - The tool returns time in YYYY-MM-DD HH:MM:SS format.
+        
+        If the user asks for current information, news, or facts from the internet:
+        - Use the `webSearch` tool to search the web.
+        - Provide clear, relevant search queries.
+        - Summarize the search results in a helpful way.
+        - Use topic="news" for news-related queries.
+        - Cite sources by including URLs when providing information.
+        
+        If the user asks about locations, addresses, or navigation:
+        - Use available Google Maps tools to find addresses, points of interest, or navigation routes.
+        - Support both Chinese and English location queries.
+        - Provide clear, formatted results with addresses, distances, and relevant details.
+        - Common queries: location search, directions, nearby places (restaurants, hotels, gas stations, etc.)
+        - Available tools: searchPlace, geocodeAddress, reverseGeocode, getDirections, findNearbyPlaces
+        
+        When the user asks for directions or navigation:
+        - ALWAYS ask for their current location/starting point if not provided.
+        - ALWAYS ask for their preferred travel mode if not specified:
+          * DRIVE (driving, default)
+          * WALK (walking)
+          * BICYCLE (cycling)
+          * TRANSIT (public transportation - bus, MTR, train)
+        - Optionally ask about route preferences (for DRIVE/WALK/BICYCLE only):
+          * TRAFFIC_AWARE (fastest with real-time traffic, default)
+          * FUEL_EFFICIENT (save fuel)
+          * TRAFFIC_AWARE_OPTIMAL (balanced speed and distance)
+        - Only call `getDirections` after collecting all necessary information.
+        - CRITICAL: Only provide information returned by the tools. Never make up transit routes, bus numbers, or travel times.
+        - If the tool returns an error, inform the user and suggest alternatives (e.g., try a different mode or use Google Maps directly).
+        - Present the route with clear distance, duration, and step-by-step directions.
+        - For TRANSIT mode, include specific bus/train lines, stops, and transfer information.
+        - Include traffic warnings and toll information if available.
         
         If the user asks for any kind of STUDY PLAN, INTERVIEW PLAN, LEARNING ROADMAP, or PREPARATION GUIDE:
             1. Generate the plan in CLEAN PLAIN TEXT (no Markdown).
