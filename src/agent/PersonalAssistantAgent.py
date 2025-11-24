@@ -10,8 +10,10 @@ from src.tools.AgentTools import (
     webSearch,
     GOOGLE_MAPS_AVAILABLE,
     get_google_maps_tools
+    getWeather
 )
 from src.service.GoogleService import GoogleService
+from tools.AgentTools import sendEmail, createBookingEvent, searchEmail, createDriveDocument, getWeather
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.rate_limiters import InMemoryRateLimiter
 from langchain.agents.middleware import ContextEditingMiddleware, ClearToolUsesEdit, SummarizationMiddleware
@@ -40,6 +42,7 @@ class PersonalAssistantAgent:
             max_bucket_size=settings.rate_limit_max_burst,
         )
 
+<<<<<<< HEAD
         ## creating an agent with memory management middleware
         # Build tools list
         tools_list = [
@@ -85,6 +88,12 @@ class PersonalAssistantAgent:
                 ),
             ]
         )
+=======
+        ## creating an agent
+        self._agent = create_agent(model=self._model,
+                                    tools=[sendEmail, createBookingEvent, searchEmail, createDriveDocument, getWeather],
+                                    system_prompt=self._getSystemPrompt(),  checkpointer=InMemorySaver())
+>>>>>>> feature/weather-check
 
     def callAgent(self, query):
         return self._agent.invoke(
@@ -103,6 +112,13 @@ class PersonalAssistantAgent:
         You are an intelligent personal assistant for {user_name}.
         Always respond respectfully, helpfully, and professionally.
 
+        If the user wants to check weather:
+        - Use the `getWeather` tool.
+        - Extract the location from the user's query.
+        - If a specific date is mentioned, include it; otherwise query current weather.
+        - Present the weather information in a clear, readable format.
+        - Include temperature, conditions, humidity, and any alerts if available.
+        
         If the user wants to send an email:
         - Use the `sendEmail` tool.
         - Collect all necessary details (recipient(s), subject, and body).

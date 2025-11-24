@@ -4,7 +4,9 @@ import pytz
 
 from langchain.tools import tool
 from src.service.GoogleService import GoogleService
+from src.service.WeatherService import WeatherService  # 从weather分支添加的天气服务
 from src.config import settings
+
 
 # Lazy import for Tavily to avoid import errors if not configured
 _tavily_client = None
@@ -19,6 +21,7 @@ def _get_tavily_client():
 
 
 googleService = GoogleService()
+weatherService = WeatherService()
 
 # Import Google Maps tools (Direct API)
 try:
@@ -165,6 +168,7 @@ def createDriveDocument(documentName : str, documentContent : str):
     return googleService.createDocumentInDrive(documentName, documentContent)
 
 @tool
+<<<<<<< HEAD
 def getCurrentTime() -> str:
     """
     Get the current date and time with timezone information.
@@ -216,10 +220,24 @@ def webSearch(
         Type of search - "general" for web search or "news" for news articles (default: "general")
     include_raw_content : bool, optional
         Whether to include full page content in results (default: False)
+=======
+def getWeather(location: str, date: str = None):
+    """
+    Queries weather information for a specific location and date.
+    
+    Parameters:
+    ----------
+    location : str
+        The city or location name (e.g., "Beijing", "New York", "Shanghai")
+    date : str, optional
+        The date to query weather for in format "YYYY-MM-DD".
+        If not provided, returns current weather.
+>>>>>>> feature/weather-check
     
     Returns:
     -------
     str
+<<<<<<< HEAD
         Search results with titles, URLs, and snippets
     
     Notes:
@@ -254,3 +272,15 @@ def webSearch(
     
     except Exception as e:
         return f"Error performing web search: {str(e)}"
+=======
+        Weather information including temperature, conditions, humidity, etc.
+    
+    Notes:
+    -----
+    - Supports major cities worldwide
+    - Date parameter is optional; defaults to current weather
+    - Returns forecast data if date is in the future
+    """
+    print(f"Querying weather for {location}...")
+    return weatherService.get_weather(location, date)
+>>>>>>> feature/weather-check
