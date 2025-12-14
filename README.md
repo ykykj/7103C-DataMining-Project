@@ -60,6 +60,7 @@ This assistant can generate study or interview preparation plans, interact with 
 | **DeepSeek**              | LLM model                |
 | **Google Workspace APIs** | Gmail + Calendar         |
 | **Google Maps API**       | Location & Navigation    |
+| **Qweather**              | Weather Service          |
 | **OAuth 2.0**             | Authentication           |
 | **Rich**                  | CLI styling              |
 
