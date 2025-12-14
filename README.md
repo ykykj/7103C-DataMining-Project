@@ -1,6 +1,6 @@
 # **AI Agent CLI – Personal Assistant Agent**
 
-A terminal-based AI Agent built with **LangChain**, **Google Gemini 2.5 Pro**, and Google Workspace APIs.
+A terminal-based AI Agent built with **LangChain**, **DeepSeek**, and Google Workspace APIs.
 This assistant can generate study or interview preparation plans, interact with Gmail, upload files to Google Drive, and more — all through a clean **CLI interface**.
 
 <p align="center">
@@ -15,7 +15,6 @@ This assistant can generate study or interview preparation plans, interact with 
 
 * Creates personalized study plans.
 * Generates custom interview preparation outlines.
-* Outputs can be stored directly in Google Drive.
 
 ### **✓ Email Automation**
 
@@ -23,36 +22,32 @@ This assistant can generate study or interview preparation plans, interact with 
 * Searches your inbox using keyword-based queries.
 * Extracts summaries and relevant information from email threads.
 
-### **✓ Google Drive Integration**
-
-* Uploads generated files to Drive.
-* Allows Drive-based workflows through the agent.
 
 ### **✓ Google Calendar**
 
 * Can create calendar events with or without invited participants.
 * Read and query calendar events within time ranges.
 
-### **✓ Google Maps MCP Integration**
+### **✓ Google Maps API Integration**
 
-* Official Google Maps MCP Server integration
+* Direct Google Maps API integration
 * Search for places and points of interest
 * Geocoding and reverse geocoding
 * Directions with multiple travel modes
 * Distance matrix calculations
 * Nearby places search
 * Supports both Chinese and English queries
-* Automatic tool discovery via MCP protocol
 
 ### **✓ CLI Interface**
 
 * Simple and intuitive command-line experience.
 * No web UI or additional desktop software needed.
 
-### **✓ LLM Reasoning with Gemini 2.5 Pro**
+### **✓ LLM Reasoning with DeepSeek**
 
 * Integrated with LangChain’s agent framework.
-* Dynamically calls tools such as search, send email, or upload to Drive based on intent.
+* Dynamically calls tools such as search or send email based on intent.
+* Configurable to work with other OpenAI-compatible APIs.
 
 ---
 
@@ -62,10 +57,9 @@ This assistant can generate study or interview preparation plans, interact with 
 | ------------------------- |--------------------------|
 | **Python 3.10+**          | Main runtime             |
 | **LangChain**             | Agent + Tools            |
-| **Google Gemini 2.5 Pro** | LLM model                |
-| **Google Workspace APIs** | Gmail + Drive + Calendar |
-| **Google Maps MCP**       | Location & Navigation    |
-| **MCP Protocol**          | Tool Integration         |
+| **DeepSeek**              | LLM model                |
+| **Google Workspace APIs** | Gmail + Calendar         |
+| **Google Maps API**       | Location & Navigation    |
 | **OAuth 2.0**             | Authentication           |
 | **Rich**                  | CLI styling              |
 
@@ -76,8 +70,8 @@ This assistant can generate study or interview preparation plans, interact with 
 ### **1. Clone the Repository**
 
 ```bash
-git clone https://github.com/your-username/your-repo.git
-cd your-repo
+git clone https://github.com/ykykj/7103C-DataMining-Project.git
+cd 7103C-DataMining-Project
 ```
 
 ### **2. Create Virtual Environment**
@@ -98,7 +92,7 @@ Minimal example for `requirements.txt`:
 
 ```txt
 langchain
-google-generativeai
+langchain-openai
 google-auth
 google-auth-oauthlib
 google-api-python-client
@@ -110,7 +104,7 @@ rich
 
 ## 🔐 **Google OAuth Setup (Required)**
 
-This project **requires a `credentials.json`** file downloaded from Google Cloud Console.
+This project uses **OAuth 2.0 Client IDs** to authenticate with Google Services.
 
 ### **Steps:**
 
@@ -127,19 +121,10 @@ Required before you can create OAuth client credentials.
 
 * Application type: **Desktop App**
 
-#### 4. Download JSON File
+#### 4. Get Client ID and Secret
 
-After creating the OAuth client, click **Download JSON**.
-
-#### 5. Place the File in the Required Folder
-
-Your project must contain:
-
-```
-creds/credentials.json
-```
-
-The application loads OAuth credentials from this file.
+After creating the OAuth client, copy the **Client ID** and **Client Secret**.
+You will add these to your environment variables (see below).
 
 ---
 
@@ -150,9 +135,10 @@ Create a `.env` file with the following variables:
 ```env
 # DeepSeek API (for LLM)
 DEEPSEEK_API_KEY=your_deepseek_api_key
+DEEPSEEK_MODEL=deepseek-chat
 
-# Google Cloud
-GOOGLE_CLOUD_AUTH_EMAIL=your-email@gmail.com
+# Google Cloud OAuth
+# Copy these from your Google Cloud Console
 GOOGLE_OAUTH_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_OAUTH_CLIENT_SECRET=your-client-secret
 
@@ -165,15 +151,14 @@ TAVILY_API_KEY=your_tavily_api_key
 
 See `.env.example` for a complete configuration template.
 
-### **Google Maps MCP Setup**
+### **Google Maps API Setup**
 
 **Prerequisites:**
-- Node.js and npm (for running MCP server)
+- Google Maps API Key
 
 **Steps:**
-1. Install Node.js from [nodejs.org](https://nodejs.org/)
-2. Visit [Google Cloud Console](https://console.cloud.google.com/google/maps-apis)
-3. Enable these APIs:
+1. Visit [Google Cloud Console](https://console.cloud.google.com/google/maps-apis)
+2. Enable these APIs:
    - Places API
    - Geocoding API
    - Directions API
@@ -181,16 +166,7 @@ See `.env.example` for a complete configuration template.
 4. Create an API key
 5. Add it to your `.env` file
 
-**Quick Start:**
-```bash
-# Run installation script
-install_google_maps.bat  # Windows
-# or
-./install_google_maps.ps1  # PowerShell
 
-# Test configuration
-python test_google_maps.py
-```
 
 For detailed setup instructions, see `GOOGLE_MAPS_SETUP.md` or `QUICKSTART.md`.
 
@@ -198,31 +174,28 @@ For detailed setup instructions, see `GOOGLE_MAPS_SETUP.md` or `QUICKSTART.md`.
 
 ## 📁 **Project Structure**
 
-This README follows **your exact structure**, as provided:
+```
+/
+├── main.py                  # Entry Point
+├── src/
+│   ├── agent/             # Agent Logic
+│   │   ├── __init__.py
+│   │   └── PersonalAssistantAgent.py
+│   │
+│   ├── service/           # API Services
+│   │   ├── __init__.py
+│   │   ├── GoogleService.py
+│   │   └── WeatherService.py
+│   │
+│   ├── tools/             # Agent Tools
+│   │   ├── __init__.py
+│   │   ├── AgentTools.py
+│   │   └── GoogleMapTools.py
+│   │
+│   └── config.py          # Configuration
+└── .env                   # Environment Variables
+```
 
-```
-src/
-├── agent/
-│   ├── __init__.py
-│   └── PersonalAssistantAgent.py
-│
-├── service/
-│   ├── __init__.py
-│   └── GoogleService.py
-│
-├── tools/
-│   ├── __init__.py
-│   └── AgentTools.py
-│
-└── Main.py
-```
-
-Additionally, you must manually create:
-
-```
-creds/
-└── credentials.json
-```
 ---
 
 ## ▶️ **Running the Application**
@@ -230,7 +203,7 @@ creds/
 To start the CLI:
 
 ```bash
-python -m src.Main.py
+python main.py
 ```
 
 ---
