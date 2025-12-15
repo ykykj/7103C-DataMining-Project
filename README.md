@@ -1,7 +1,6 @@
-# **AI Agent CLI – Personal Assistant Agent**
+# **AI-Powered Personal Assistant Agent**
 
 A terminal-based AI Agent built with **LangChain**, **DeepSeek**, and Google Workspace APIs.
-This assistant can generate study or interview preparation plans, interact with Gmail, upload files to Google Drive, and more — all through a clean **CLI interface**.
 
 <p align="center">
   <img src="./img/cli.png" width="650">
@@ -10,11 +9,6 @@ This assistant can generate study or interview preparation plans, interact with 
 ---
 
 ## 🚀 **Features**
-
-### **✓ Intelligent Plan Generation**
-
-* Creates personalized study plans.
-* Generates custom interview preparation outlines.
 
 ### **✓ Email Automation**
 
@@ -31,11 +25,20 @@ This assistant can generate study or interview preparation plans, interact with 
 
 * Direct Google Maps API integration
 * Search for places and points of interest
-* Geocoding and reverse geocoding
 * Directions with multiple travel modes
 * Distance matrix calculations
 * Nearby places search
-* Supports both Chinese and English queries
+
+### **✓ Weather Information**
+
+* Real-time weather updates using Qweather API.
+* Location-based weather queries.
+
+### **✓ Web Search**
+
+* Integrated web search for retrieving real-time information.
+* powered by Tavily API for relevant and up-to-date results.
+* Summarized search results for quick answers.
 
 ### **✓ CLI Interface**
 
