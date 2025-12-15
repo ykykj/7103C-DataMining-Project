@@ -4,7 +4,7 @@ A terminal-based AI Agent built with **LangChain**, **DeepSeek**, and Google Wor
 This assistant can generate study or interview preparation plans, interact with Gmail, upload files to Google Drive, and more — all through a clean **CLI interface**.
 
 <p align="center">
-  <img src="sample_cli.png" width="650">
+  <img src="./img/cli.png" width="650">
 </p>
 
 ---
@@ -21,7 +21,6 @@ This assistant can generate study or interview preparation plans, interact with 
 * Sends emails using your Gmail account.
 * Searches your inbox using keyword-based queries.
 * Extracts summaries and relevant information from email threads.
-
 
 ### **✓ Google Calendar**
 
@@ -53,16 +52,16 @@ This assistant can generate study or interview preparation plans, interact with 
 
 ## 🛠 **Tech Stack**
 
-| Component                 | Description              |
-| ------------------------- |--------------------------|
-| **Python 3.10+**          | Main runtime             |
-| **LangChain**             | Agent + Tools            |
-| **DeepSeek**              | LLM model                |
-| **Google Workspace APIs** | Gmail + Calendar         |
-| **Google Maps API**       | Location & Navigation    |
-| **Qweather API**          | Weather Service          |
-| **OAuth 2.0**             | Authentication           |
-| **Rich**                  | CLI styling              |
+| Component                 | Description           |
+| ------------------------- | --------------------- |
+| **Python 3.10+**          | Main runtime          |
+| **LangChain**             | Agent + Tools         |
+| **DeepSeek**              | LLM model             |
+| **Google Workspace APIs** | Gmail + Calendar      |
+| **Google Maps API**       | Location & Navigation |
+| **Qweather API**          | Weather Service       |
+| **OAuth 2.0**             | Authentication        |
+| **Rich**                  | CLI styling           |
 
 ---
 
