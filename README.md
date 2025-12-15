@@ -26,7 +26,6 @@ A terminal-based AI Agent built with **LangChain**, **DeepSeek**, and Google Wor
 * Direct Google Maps API integration
 * Search for places and points of interest
 * Directions with multiple travel modes
-* Distance matrix calculations
 * Nearby places search
 
 ### **✓ Weather Information**
